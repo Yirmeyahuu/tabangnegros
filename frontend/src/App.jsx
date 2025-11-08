@@ -125,79 +125,126 @@ function UserApp() {
     }
   }
 
-  // Function to request location permission using Capacitor
+  // Enhanced location function with multiple fallbacks
   const requestLocationPermission = async () => {
     setRequestingLocation(true)
     setError('')
 
     try {
-      // First, check permissions
-      const permission = await Geolocation.checkPermissions()
-      console.log('Current permission status:', permission.location)
+      console.log('Attempting to get location...')
 
-      // If permission is denied or not determined, request it
-      if (permission.location !== 'granted') {
-        const requestResult = await Geolocation.requestPermissions()
-        console.log('Permission request result:', requestResult.location)
+      // Method 1: Try Capacitor Geolocation (works on most devices)
+      try {
+        const permission = await Geolocation.checkPermissions()
+        console.log('Capacitor permission status:', permission.location)
+
+        if (permission.location !== 'granted') {
+          const requestResult = await Geolocation.requestPermissions()
+          console.log('Permission request result:', requestResult.location)
+          
+          if (requestResult.location === 'denied') {
+            throw new Error('Permission denied')
+          }
+        }
+
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        })
+
+        const coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        }
+
+        console.log('✅ Location obtained via Capacitor:', coords)
+        await handleLocationSuccess(coords)
+        return
+
+      } catch (capacitorError) {
+        console.log('Capacitor failed:', capacitorError.message)
         
-        if (requestResult.location === 'denied') {
-          setLocationPermission('denied')
-          setError('Location permission denied. Please enable location access in your device settings.')
-          setRequestingLocation(false)
+        // Method 2: Fallback to Browser Geolocation API (works without Play Services)
+        if ('geolocation' in navigator) {
+          console.log('Trying browser geolocation API...')
+          
+          await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                const coords = {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy
+                }
+                
+                console.log('✅ Location obtained via Browser API:', coords)
+                await handleLocationSuccess(coords)
+                resolve()
+              },
+              (error) => {
+                console.log('Browser geolocation failed:', error.message)
+                reject(error)
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+              }
+            )
+          })
           return
         }
+        
+        throw new Error('All location methods failed')
       }
-
-      // Get current position
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      })
-
-      const coords = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy
-      }
-
-      setLocation(coords)
-      setLocationPermission('granted')
-      
-      // Get address from coordinates
-      const locationAddress = await getAddressFromCoords(
-        coords.latitude,
-        coords.longitude
-      )
-      setAddress(locationAddress)
-      setRequestingLocation(false)
 
     } catch (error) {
-      console.error('Location error:', error)
+      console.error('Final location error:', error)
       setRequestingLocation(false)
       setLocationPermission('denied')
       
-      if (error.message.includes('denied')) {
+      if (error.message.includes('denied') || error.code === 1) {
         setError('Location permission denied. Please enable location access in your device settings.')
-      } else if (error.message.includes('unavailable')) {
-        setError('Location information is unavailable. Please check your GPS settings.')
-      } else if (error.message.includes('timeout')) {
-        setError('Location request timed out. Please try again.')
+      } else if (error.message.includes('unavailable') || error.code === 2) {
+        setError('Location unavailable. Please check your GPS settings and try again.')
+      } else if (error.message.includes('timeout') || error.code === 3) {
+        setError('Location request timed out. Please ensure GPS is enabled and try again.')
       } else {
-        setError('Unable to get your location. Please try again.')
+        setError('Unable to get location. Please ensure location services are enabled.')
       }
     }
+  }
+
+  // Helper function to handle successful location
+  const handleLocationSuccess = async (coords) => {
+    setLocation(coords)
+    setLocationPermission('granted')
+    
+    const locationAddress = await getAddressFromCoords(
+      coords.latitude,
+      coords.longitude
+    )
+    setAddress(locationAddress)
+    setRequestingLocation(false)
   }
 
   // Check initial location permission status
   useEffect(() => {
     const checkInitialPermission = async () => {
       try {
-        const permission = await Geolocation.checkPermissions()
-        setLocationPermission(permission.location)
-        
-        if (permission.location === 'granted') {
-          requestLocationPermission()
+        // Try Capacitor first
+        try {
+          const permission = await Geolocation.checkPermissions()
+          setLocationPermission(permission.location)
+          
+          if (permission.location === 'granted') {
+            requestLocationPermission()
+          }
+        } catch (err) {
+          // If Capacitor fails, just wait for user to click button
+          console.log('Capacitor check failed, waiting for user action')
         }
       } catch (error) {
         console.error('Error checking permissions:', error)
@@ -266,7 +313,7 @@ function UserApp() {
     }
   }
 
-  // ...existing code (Preloader component stays the same)...
+  // Preloader (same as before)
   if (isPreloading) {
     return (
       <div className={`min-h-screen flex flex-col items-center justify-center transition-all duration-500 ${
@@ -327,7 +374,6 @@ function UserApp() {
         ? 'bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#334155]' 
         : 'bg-gradient-to-b from-white via-blue-50 to-blue-100'
     }`}>
-      {/* ...existing header code... */}
       <header className={`${
         darkMode 
           ? 'bg-gradient-to-r from-blue-900 to-blue-800' 
@@ -367,7 +413,6 @@ function UserApp() {
       )}
 
       <main className="flex-1 flex flex-col p-4 max-w-lg mx-auto w-full">
-        {/* ...rest of the component stays the same... */}
         {!location && locationPermission !== 'granted' && (
           <div className={`${
             darkMode 
@@ -412,7 +457,7 @@ function UserApp() {
                 {requestingLocation ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Requesting...
+                    Getting Location...
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
@@ -429,6 +474,12 @@ function UserApp() {
                 darkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>
                 🔒 Your location is only shared when you send a help request
+              </p>
+              
+              <p className={`text-xs mt-2 ${
+                darkMode ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                ✅ Works on all devices (Huawei, Samsung, etc.)
               </p>
             </div>
           </div>
@@ -595,7 +646,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<UserApp />} />
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   )
