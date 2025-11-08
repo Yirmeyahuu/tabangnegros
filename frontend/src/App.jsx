@@ -6,6 +6,7 @@ import L from 'leaflet'
 import { savePendingReport, getPendingReports, deletePendingReport } from './db'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import AdminDashboard from './components/AdminDashboard'
+import { Geolocation } from '@capacitor/geolocation'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -31,6 +32,8 @@ function UserApp() {
   })
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [pendingCount, setPendingCount] = useState(0)
+  const [locationPermission, setLocationPermission] = useState('prompt')
+  const [requestingLocation, setRequestingLocation] = useState(false)
 
   // Preloader effect
   useEffect(() => {
@@ -122,34 +125,86 @@ function UserApp() {
     }
   }
 
-  // Get user's location on mount
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const coords = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          }
-          setLocation(coords)
-          
-          // Get address from coordinates
-          const locationAddress = await getAddressFromCoords(
-            coords.latitude,
-            coords.longitude
-          )
-          setAddress(locationAddress)
-        },
-        (error) => {
-          setError('Location access denied. Please enable location services.')
-          console.error('Location error:', error)
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
+  // Function to request location permission using Capacitor
+  const requestLocationPermission = async () => {
+    setRequestingLocation(true)
+    setError('')
+
+    try {
+      // First, check permissions
+      const permission = await Geolocation.checkPermissions()
+      console.log('Current permission status:', permission.location)
+
+      // If permission is denied or not determined, request it
+      if (permission.location !== 'granted') {
+        const requestResult = await Geolocation.requestPermissions()
+        console.log('Permission request result:', requestResult.location)
+        
+        if (requestResult.location === 'denied') {
+          setLocationPermission('denied')
+          setError('Location permission denied. Please enable location access in your device settings.')
+          setRequestingLocation(false)
+          return
+        }
+      }
+
+      // Get current position
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      })
+
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      }
+
+      setLocation(coords)
+      setLocationPermission('granted')
+      
+      // Get address from coordinates
+      const locationAddress = await getAddressFromCoords(
+        coords.latitude,
+        coords.longitude
       )
-    } else {
-      setError('Geolocation is not supported by your device.')
+      setAddress(locationAddress)
+      setRequestingLocation(false)
+
+    } catch (error) {
+      console.error('Location error:', error)
+      setRequestingLocation(false)
+      setLocationPermission('denied')
+      
+      if (error.message.includes('denied')) {
+        setError('Location permission denied. Please enable location access in your device settings.')
+      } else if (error.message.includes('unavailable')) {
+        setError('Location information is unavailable. Please check your GPS settings.')
+      } else if (error.message.includes('timeout')) {
+        setError('Location request timed out. Please try again.')
+      } else {
+        setError('Unable to get your location. Please try again.')
+      }
     }
+  }
+
+  // Check initial location permission status
+  useEffect(() => {
+    const checkInitialPermission = async () => {
+      try {
+        const permission = await Geolocation.checkPermissions()
+        setLocationPermission(permission.location)
+        
+        if (permission.location === 'granted') {
+          requestLocationPermission()
+        }
+      } catch (error) {
+        console.error('Error checking permissions:', error)
+      }
+    }
+    
+    checkInitialPermission()
   }, [])
 
   const sendEmergencyReport = async () => {
@@ -180,21 +235,18 @@ function UserApp() {
 
     try {
       if (!isOnline) {
-        // Save offline
         await savePendingReport(reportData)
         setSuccess(true)
         setMessage('')
         setPendingCount(prev => prev + 1)
         setTimeout(() => setSuccess(false), 5000)
       } else {
-        // Send online
         await axios.post(`${API_URL}/send/`, reportData)
         setSuccess(true)
         setMessage('')
         setTimeout(() => setSuccess(false), 5000)
       }
     } catch (err) {
-      // If online request fails, save offline
       if (isOnline) {
         try {
           await savePendingReport(reportData)
@@ -214,7 +266,7 @@ function UserApp() {
     }
   }
 
-  // Preloader component
+  // ...existing code (Preloader component stays the same)...
   if (isPreloading) {
     return (
       <div className={`min-h-screen flex flex-col items-center justify-center transition-all duration-500 ${
@@ -225,7 +277,6 @@ function UserApp() {
         <div className="text-center">
           <div className="relative mb-8 flex justify-center">
             <div className="relative">
-              {/* Image Container */}
               <div className={`w-32 h-32 rounded-full ${
                 darkMode 
                   ? 'bg-gradient-to-r from-blue-600 to-blue-700' 
@@ -237,7 +288,6 @@ function UserApp() {
                   className="w-full h-full object-contain rounded-full"
                 />
               </div>
-              {/* Ripple effect */}
               <div className={`absolute inset-0 w-32 h-32 rounded-full ${
                 darkMode ? 'border-blue-500' : 'border-blue-400'
               } border-4 animate-ping opacity-20`}></div>
@@ -277,7 +327,7 @@ function UserApp() {
         ? 'bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#334155]' 
         : 'bg-gradient-to-b from-white via-blue-50 to-blue-100'
     }`}>
-      {/* Header */}
+      {/* ...existing header code... */}
       <header className={`${
         darkMode 
           ? 'bg-gradient-to-r from-blue-900 to-blue-800' 
@@ -309,7 +359,6 @@ function UserApp() {
         </div>
       </header>
 
-      {/* Offline Indicator */}
       {!isOnline && (
         <div className="bg-yellow-500 text-white text-xs py-2 px-4 text-center font-medium">
           📡 Offline Mode - Reports will sync when online
@@ -317,60 +366,136 @@ function UserApp() {
         </div>
       )}
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col p-4 max-w-lg mx-auto w-full">
-        {/* Location Status & Map */}
-        <div className={`${
-          darkMode 
-            ? 'bg-slate-800/50 backdrop-blur-sm border border-slate-700' 
-            : 'bg-white border border-blue-100'
-        } rounded-xl shadow-lg p-4 mb-4 transition-colors duration-300 overflow-hidden`}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`w-3 h-3 rounded-full ${
-              location ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-            }`}></div>
-            <span className={`text-sm font-medium ${
-              darkMode ? 'text-slate-200' : 'text-slate-700'
-            }`}>
-              {location ? 'Location Active' : 'Getting location...'}
-            </span>
-          </div>
-          
-          {location && (
-            <>
-              <p className={`text-xs mb-2 ${
+        {/* ...rest of the component stays the same... */}
+        {!location && locationPermission !== 'granted' && (
+          <div className={`${
+            darkMode 
+              ? 'bg-slate-800/50 backdrop-blur-sm border border-slate-700' 
+              : 'bg-white border border-blue-100'
+          } rounded-xl shadow-lg p-6 mb-4 transition-colors duration-300`}>
+            <div className="text-center">
+              <div className={`w-16 h-16 mx-auto mb-4 rounded-full ${
+                darkMode ? 'bg-blue-900/50' : 'bg-blue-100'
+              } flex items-center justify-center`}>
+                <svg className={`w-8 h-8 ${
+                  darkMode ? 'text-blue-400' : 'text-blue-600'
+                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              
+              <h3 className={`text-lg font-bold mb-2 ${
+                darkMode ? 'text-white' : 'text-slate-800'
+              }`}>
+                Enable Location Access
+              </h3>
+              
+              <p className={`text-sm mb-4 ${
                 darkMode ? 'text-slate-300' : 'text-slate-600'
               }`}>
-                📍 {address || 'Loading address...'}
+                We need your precise location to send help to the right place during emergencies.
               </p>
-              <p className={`text-xs mb-3 ${
+
+              <button
+                onClick={requestLocationPermission}
+                disabled={requestingLocation}
+                className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
+                  requestingLocation
+                    ? 'bg-gray-400 cursor-not-allowed text-white'
+                    : darkMode
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'
+                }`}
+              >
+                {requestingLocation ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Requesting...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Allow Location Access
+                  </span>
+                )}
+              </button>
+
+              <p className={`text-xs mt-3 ${
                 darkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>
-                Accuracy: ±{Math.round(location.accuracy)}m
+                🔒 Your location is only shared when you send a help request
               </p>
-              
-              {/* Map */}
-              <div className="h-48 rounded-lg overflow-hidden">
-                <MapContainer
-                  center={[location.latitude, location.longitude]}
-                  zoom={13}
-                  style={{ height: '100%', width: '100%' }}
-                  zoomControl={false}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <Marker position={[location.latitude, location.longitude]}>
-                    <Popup>Your location</Popup>
-                  </Marker>
-                </MapContainer>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
 
-        {/* Success Message */}
+        {location && (
+          <div className={`${
+            darkMode 
+              ? 'bg-slate-800/50 backdrop-blur-sm border border-slate-700' 
+              : 'bg-white border border-blue-100'
+          } rounded-xl shadow-lg p-4 mb-4 transition-colors duration-300 overflow-hidden`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  location ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
+                }`}></div>
+                <span className={`text-sm font-medium ${
+                  darkMode ? 'text-slate-200' : 'text-slate-700'
+                }`}>
+                  Location Active
+                </span>
+              </div>
+              
+              <button
+                onClick={requestLocationPermission}
+                disabled={requestingLocation}
+                className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                  darkMode
+                    ? 'bg-blue-900/50 hover:bg-blue-900 text-blue-300'
+                    : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                }`}
+                title="Refresh location"
+              >
+                {requestingLocation ? '↻' : '🔄 Refresh'}
+              </button>
+            </div>
+            
+            <p className={`text-xs mb-2 ${
+              darkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              📍 {address || 'Loading address...'}
+            </p>
+            <p className={`text-xs mb-3 ${
+              darkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              Accuracy: ±{Math.round(location.accuracy)}m
+            </p>
+            
+            <div className="h-48 rounded-lg overflow-hidden">
+              <MapContainer
+                center={[location.latitude, location.longitude]}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+                zoomControl={false}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[location.latitude, location.longitude]}>
+                  <Popup>Your location</Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+          </div>
+        )}
+
         {success && (
           <div className={`${
             darkMode
@@ -391,7 +516,6 @@ function UserApp() {
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
           <div className={`${
             darkMode 
@@ -402,7 +526,6 @@ function UserApp() {
           </div>
         )}
 
-        {/* Message Input */}
         <div className={`${
           darkMode 
             ? 'bg-slate-800/50 backdrop-blur-sm border border-slate-700' 
@@ -433,7 +556,6 @@ function UserApp() {
           </p>
         </div>
 
-        {/* Emergency Button */}
         <button
           onClick={sendEmergencyReport}
           disabled={loading || !location}
@@ -457,7 +579,6 @@ function UserApp() {
           )}
         </button>
 
-        {/* Info */}
         <div className={`mt-auto pt-6 text-center text-xs ${
           darkMode ? 'text-slate-400' : 'text-slate-500'
         } transition-colors duration-300`}>
@@ -469,7 +590,6 @@ function UserApp() {
   )
 }
 
-// Main App component with routing
 function App() {
   return (
     <BrowserRouter>

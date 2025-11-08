@@ -1,0 +1,568 @@
+================================================================================
+TABANG NEGROS - EMERGENCY HELP REQUEST SYSTEM
+Version Update & Build Documentation
+================================================================================
+
+PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+- Frontend: React + Vite + Tailwind CSS + Capacitor
+- Backend: Django + Django REST Framework
+- Database: PostgreSQL (Render)
+- Mobile: Android (iOS support available)
+- Deployment: Render (Backend), Local Build (Mobile)
+
+TECH STACK
+--------------------------------------------------------------------------------
+Frontend:
+  - React 18+ with Hooks
+  - Vite (Build tool)
+  - Tailwind CSS (Styling)
+  - React Router DOM (Routing)
+  - React Leaflet (Maps)
+  - Axios (HTTP client)
+  - IndexedDB (Offline storage)
+  - Capacitor (Native mobile)
+
+Backend:
+  - Django 4.2+
+  - Django REST Framework
+  - PostgreSQL
+  - CORS Headers
+  - Whitenoise (Static files)
+  - Gunicorn (WSGI server)
+
+Mobile:
+  - Capacitor CLI
+  - @capacitor/geolocation
+  - @capacitor/android
+  - @capacitor/ios
+
+================================================================================
+LIVE URLS
+================================================================================
+Backend API:      https://tabangnegros.onrender.com
+API Endpoints:    https://tabangnegros.onrender.com/api/reports/
+Active Reports:   https://tabangnegros.onrender.com/api/reports/active/
+Django Admin:     https://tabangnegros.onrender.com/admin/
+
+================================================================================
+PREREQUISITES
+================================================================================
+
+Required Software:
+  ☐ Node.js (v18+)
+  ☐ npm or yarn
+  ☐ Java 21 (OpenJDK)
+  ☐ Android Studio
+  ☐ Git
+  ☐ ADB (Android Debug Bridge)
+
+Optional:
+  ☐ Xcode (for iOS builds - macOS only)
+  ☐ CocoaPods (for iOS dependencies)
+
+Installation Commands:
+  brew install node
+  brew install openjdk@21
+  brew install --cask android-studio
+  npm install -g @capacitor/cli
+
+Java 21 Setup (CRITICAL):
+  brew install openjdk@21
+  sudo ln -sfn /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk \
+    /Library/Java/JavaVirtualMachines/openjdk-21.jdk
+  
+  echo 'export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home' >> ~/.zshrc
+  echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.zshrc
+  source ~/.zshrc
+
+Verify:
+  java -version    # Should show: openjdk version "21.x.x"
+  node -v          # Should show: v18.x.x or higher
+  npm -v
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+
+tabangnegros/
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx                    # Main user app
+│   │   ├── components/
+│   │   │   └── AdminDashboard.jsx     # Admin interface
+│   │   ├── db.js                      # IndexedDB offline storage
+│   │   └── main.jsx
+│   ├── android/                       # Capacitor Android project
+│   │   ├── app/
+│   │   │   ├── build.gradle          # Version numbers here!
+│   │   │   └── src/main/
+│   │   │       └── res/              # App icons location
+│   │   └── gradle.properties         # Java home configuration
+│   ├── ios/                          # Capacitor iOS project (optional)
+│   ├── dist/                         # Build output (generated)
+│   ├── capacitor.config.json         # Capacitor configuration
+│   ├── package.json
+│   └── vite.config.js
+│
+└── backend/
+    ├── tabangnegrosproj/
+    │   ├── settings.py               # Django settings
+    │   └── urls.py
+    ├── reports/                      # Main app
+    │   ├── models.py
+    │   ├── views.py
+    │   └── urls.py
+    ├── requirements.txt
+    ├── build.sh                      # Render build script
+    └── .env                          # Environment variables
+
+================================================================================
+HOW TO BUILD A NEW VERSION (ANDROID)
+================================================================================
+
+STEP 1: UPDATE VERSION NUMBERS
+--------------------------------------------------------------------------------
+Location: frontend/android/app/build.gradle
+
+Find and update these lines:
+
+    android {
+        defaultConfig {
+            versionCode 2          // INTEGER - Increment by 1 (1, 2, 3, 4...)
+            versionName "1.1.0"    // STRING - Semantic version (1.0.0, 1.1.0, 2.0.0)
+        }
+    }
+
+Version Naming Convention:
+  - Major: Breaking changes (1.0.0 → 2.0.0)
+  - Minor: New features (1.0.0 → 1.1.0)
+  - Patch: Bug fixes (1.0.0 → 1.0.1)
+
+IMPORTANT: 
+  - versionCode MUST be higher than previous version (for Play Store updates)
+  - versionName is what users see
+
+
+STEP 2: MAKE YOUR CODE CHANGES
+--------------------------------------------------------------------------------
+Common files to update:
+
+Frontend API URLs:
+  - frontend/src/App.jsx (line 18)
+  - frontend/src/components/AdminDashboard.jsx (line 8)
+
+UI Changes:
+  - frontend/src/App.jsx
+  - frontend/src/components/AdminDashboard.jsx
+
+New Features:
+  - Create new components in frontend/src/components/
+  - Update routing in frontend/src/App.jsx
+
+
+STEP 3: TEST LOCALLY (OPTIONAL BUT RECOMMENDED)
+--------------------------------------------------------------------------------
+Terminal commands:
+
+  cd /Users/jeremiahpantaras/Documents/tabangnegros/frontend
+  npm run dev
+
+Open: http://localhost:5173
+Test all features before building APK
+
+
+STEP 4: BUILD REACT APP
+--------------------------------------------------------------------------------
+Terminal commands:
+
+  cd /Users/jeremiahpantaras/Documents/tabangnegros/frontend
+  npm run build
+
+This creates optimized production files in the 'dist' folder
+Expected output: "✓ built in Xs"
+
+
+STEP 5: SYNC WITH CAPACITOR
+--------------------------------------------------------------------------------
+Terminal commands:
+
+  npx cap sync
+
+This copies web assets to Android/iOS projects
+Expected output: 
+  ✔ Copying web assets
+  ✔ Updating Android plugins
+  ✔ copy android
+
+
+STEP 6: BUILD ANDROID APK
+--------------------------------------------------------------------------------
+
+Method A: Command Line (Fastest)
+  cd android
+  ./gradlew assembleDebug
+
+Method B: Android Studio (Recommended for releases)
+  npx cap open android
+  Wait for Gradle sync
+  Build → Build Bundle(s) / APK(s) → Build APK(s)
+
+Build time: 1-3 minutes
+
+APK Location:
+  frontend/android/app/build/outputs/apk/debug/app-debug.apk
+
+
+STEP 7: INSTALL ON DEVICE
+--------------------------------------------------------------------------------
+
+Method A: USB Cable (ADB)
+  # Connect Android phone via USB
+  # Enable USB Debugging on phone
+  
+  adb devices                    # Verify device connected
+  adb install -r app/build/outputs/apk/debug/app-debug.apk
+  
+  # -r flag replaces existing app without uninstalling
+
+Method B: Manual Transfer
+  1. Copy app-debug.apk to Google Drive or email
+  2. Download on Android phone
+  3. Enable "Install from Unknown Sources" in Settings
+  4. Tap APK file to install
+
+Method C: Quick Copy to Desktop
+  cp android/app/build/outputs/apk/debug/app-debug.apk ~/Desktop/TabangNegros-v1.1.0.apk
+
+
+STEP 8: TEST THE UPDATE
+--------------------------------------------------------------------------------
+On your phone:
+  ☐ Open Tabang Negros app
+  ☐ Verify version number (if displayed)
+  ☐ Test location services
+  ☐ Send test emergency report
+  ☐ Check admin dashboard for report
+  ☐ Test offline mode
+  ☐ Test dark mode toggle
+
+
+================================================================================
+ONE-LINER BUILD COMMAND
+================================================================================
+
+Complete build in one command:
+
+cd /Users/jeremiahpantaras/Documents/tabangnegros/frontend && \
+npm run build && \
+npx cap sync && \
+cd android && \
+./gradlew assembleDebug && \
+echo "✅ APK built at: android/app/build/outputs/apk/debug/app-debug.apk"
+
+Install immediately:
+
+cd /Users/jeremiahpantaras/Documents/tabangnegros/frontend && \
+npm run build && \
+npx cap sync && \
+cd android && \
+./gradlew assembleDebug && \
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+
+
+================================================================================
+BUILDING RELEASE APK (FOR PRODUCTION/PLAY STORE)
+================================================================================
+
+STEP 1: Generate Keystore (First time only)
+--------------------------------------------------------------------------------
+keytool -genkey -v -keystore tabangnegros-release.keystore \
+  -alias tabangnegros -keyalg RSA -keysize 2048 -validity 10000
+
+Save the keystore file and passwords securely!
+
+
+STEP 2: Create keystore.properties
+--------------------------------------------------------------------------------
+File: frontend/android/keystore.properties
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=tabangnegros
+storeFile=/path/to/tabangnegros-release.keystore
+
+
+STEP 3: Update build.gradle
+--------------------------------------------------------------------------------
+File: frontend/android/app/build.gradle
+
+Add before 'android' block:
+
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
+Inside 'android' block, add:
+
+signingConfigs {
+    release {
+        keyAlias keystoreProperties['keyAlias']
+        keyPassword keystoreProperties['keyPassword']
+        storeFile file(keystoreProperties['storeFile'])
+        storePassword keystoreProperties['storePassword']
+    }
+}
+
+buildTypes {
+    release {
+        signingConfig signingConfigs.release
+        minifyEnabled true
+        proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    }
+}
+
+
+STEP 4: Build Release APK
+--------------------------------------------------------------------------------
+cd /Users/jeremiahpantaras/Documents/tabangnegros/frontend/android
+./gradlew assembleRelease
+
+Output: app/build/outputs/apk/release/app-release.apk
+
+
+STEP 5: Build App Bundle (For Play Store)
+--------------------------------------------------------------------------------
+cd /Users/jeremiahpantaras/Documents/tabangnegros/frontend/android
+./gradlew bundleRelease
+
+Output: app/build/outputs/bundle/release/app-release.aab
+
+Upload .aab file to Google Play Console
+
+
+================================================================================
+UPDATING BACKEND (DJANGO ON RENDER)
+================================================================================
+
+STEP 1: Make Changes to Backend Code
+--------------------------------------------------------------------------------
+Common files:
+  - backend/tabangnegrosproj/settings.py
+  - backend/reports/models.py
+  - backend/reports/views.py
+  - backend/reports/urls.py
+
+
+STEP 2: Update requirements.txt (if needed)
+--------------------------------------------------------------------------------
+cd /Users/jeremiahpantaras/Documents/tabangnegros/backend
+pip freeze > requirements.txt
+
+
+STEP 3: Commit and Push to GitHub
+--------------------------------------------------------------------------------
+git add .
+git commit -m "Update: describe your changes"
+git push origin main
+
+Render will auto-deploy (takes 3-5 minutes)
+
+
+STEP 4: Run Migrations (if database changes)
+--------------------------------------------------------------------------------
+In Render dashboard:
+  Shell → Connect
+  
+  python manage.py makemigrations
+  python manage.py migrate
+
+
+STEP 5: Verify Deployment
+--------------------------------------------------------------------------------
+curl https://tabangnegros.onrender.com/api/reports/active/
+
+Should return JSON response
+
+
+================================================================================
+COMMON ISSUES & SOLUTIONS
+================================================================================
+
+Issue: Build fails with Java version error
+Solution:
+  export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+  export PATH=$JAVA_HOME/bin:$PATH
+  ./gradlew --stop
+  ./gradlew assembleDebug
+
+Issue: "SDK location not found"
+Solution:
+  Create frontend/android/local.properties:
+  sdk.dir=/Users/jeremiahpantaras/Library/Android/sdk
+
+Issue: ADB device not found
+Solution:
+  # Enable USB Debugging on phone
+  adb kill-server
+  adb start-server
+  adb devices
+
+Issue: App crashes on startup
+Solution:
+  # Check Android Studio Logcat for errors
+  adb logcat | grep TabangNegros
+
+Issue: API not responding (503 error)
+Solution:
+  # Render free tier spins down after 15 mins
+  # First request takes 30-60 seconds to wake up
+  # Wait and retry
+
+Issue: Location not working
+Solution:
+  # Check app permissions: Settings → Apps → Tabang Negros → Permissions
+  # Enable Location permission
+
+
+================================================================================
+DEBUGGING TIPS
+================================================================================
+
+View Android Logs:
+  adb logcat
+
+Clear App Data:
+  adb shell pm clear com.tabangnegros.app
+
+Uninstall App:
+  adb uninstall com.tabangnegros.app
+
+Check Connected Devices:
+  adb devices
+
+View Build Output:
+  cd frontend/android
+  ./gradlew assembleDebug --info
+
+Check Capacitor Config:
+  cat frontend/capacitor.config.json
+
+
+================================================================================
+DEPLOYMENT CHECKLIST
+================================================================================
+
+Before Building:
+  ☐ Update versionCode in build.gradle
+  ☐ Update versionName in build.gradle
+  ☐ Test all features locally
+  ☐ Check API URLs are correct
+  ☐ Update changelog/release notes
+
+After Building:
+  ☐ Test on physical device
+  ☐ Test all major features
+  ☐ Test offline mode
+  ☐ Test location permissions
+  ☐ Verify API connectivity
+  ☐ Check for crashes
+
+Before Play Store Release:
+  ☐ Build release APK/AAB
+  ☐ Test signed release build
+  ☐ Update store listing
+  ☐ Add screenshots
+  ☐ Write release notes
+  ☐ Set target API level
+  ☐ Check app permissions
+
+
+================================================================================
+USEFUL COMMANDS REFERENCE
+================================================================================
+
+Frontend Development:
+  npm run dev              # Start dev server
+  npm run build            # Build production
+  npm run preview          # Preview production build
+  npx cap sync             # Sync web → native
+  npx cap open android     # Open in Android Studio
+  npx cap open ios         # Open in Xcode
+
+Android Build:
+  ./gradlew assembleDebug      # Debug APK
+  ./gradlew assembleRelease    # Release APK
+  ./gradlew bundleRelease      # App Bundle
+  ./gradlew clean              # Clean build
+  ./gradlew --stop             # Stop Gradle daemon
+
+ADB Commands:
+  adb devices                  # List devices
+  adb install app.apk          # Install APK
+  adb install -r app.apk       # Reinstall/update
+  adb uninstall com.app.id     # Uninstall
+  adb logcat                   # View logs
+  adb shell pm clear app.id    # Clear app data
+
+Git Commands:
+  git status                   # Check changes
+  git add .                    # Stage all changes
+  git commit -m "message"      # Commit changes
+  git push origin main         # Push to GitHub
+
+
+================================================================================
+SUPPORT & RESOURCES
+================================================================================
+
+Documentation:
+  - Capacitor: https://capacitorjs.com/docs
+  - React: https://react.dev
+  - Vite: https://vitejs.dev
+  - Django: https://docs.djangoproject.com
+  - Render: https://render.com/docs
+
+Android:
+  - Android Studio: https://developer.android.com/studio
+  - Gradle: https://gradle.org/guides
+
+Troubleshooting:
+  - Check GitHub issues for known problems
+  - Search error messages in Stack Overflow
+  - Check Render logs for backend issues
+
+
+================================================================================
+VERSION HISTORY
+================================================================================
+
+v1.0.0 (Initial Release)
+  - Emergency help request system
+  - Real-time GPS tracking
+  - Offline mode with IndexedDB
+  - Admin dashboard
+  - Dark mode support
+  - Map integration with OpenStreetMap
+
+v1.1.0 (Example Future Update)
+  - Add chat feature
+  - Push notifications
+  - Multiple language support
+  - Enhanced offline capabilities
+
+
+================================================================================
+CONTACT & MAINTENANCE
+================================================================================
+
+Developer: Jeremiah Pantaras
+Device: Poypoy MacBook Air M3
+Project Location: /Users/jeremiahpantaras/Documents/tabangnegros
+
+Last Updated: November 8, 2025
+
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
