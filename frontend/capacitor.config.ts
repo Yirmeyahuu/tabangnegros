@@ -11,6 +11,9 @@ const config: CapacitorConfig = {
   plugins: {
     Geolocation: {
       permissions: ['location']
+    },
+    Camera: {
+      permissions: ['camera']
     }
   }
 };

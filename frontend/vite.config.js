@@ -19,13 +19,13 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/negrosrelicon.svg',
+            src: '/static/negrosrelicon.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/negrosrelicon.svg',
+            src: '/static/negrosrelicon.svg',
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
@@ -67,7 +67,7 @@ export default defineConfig({
       }
     })
   ],
-  // NO base path at all in config - will be added via CLI for web build only
+  //base: '/static/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
