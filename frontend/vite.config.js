@@ -19,13 +19,13 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/static/negrosrelicon.svg',  // Updated with /static/ prefix
+            src: '/negrosrelicon.svg',  // Remove /static/ prefix
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/static/negrosrelicon.svg',  // Updated with /static/ prefix
+            src: '/negrosrelicon.svg',  // Remove /static/ prefix
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
@@ -42,7 +42,7 @@ export default defineConfig({
               cacheName: 'geocoding-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+                maxAgeSeconds: 60 * 60 * 24
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -56,7 +56,7 @@ export default defineConfig({
               cacheName: 'map-tiles-cache',
               expiration: {
                 maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 7
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -67,7 +67,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/static/',  // Added - tells Vite to use /static/ as base path
+  // Remove base: '/static/' line
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
