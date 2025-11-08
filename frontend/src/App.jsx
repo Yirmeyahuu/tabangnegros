@@ -643,12 +643,12 @@ function UserApp() {
 
 function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>  {/* ← Changed back from HashRouter */}
       <Routes>
         <Route path="/" element={<UserApp />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   )
 }
 
