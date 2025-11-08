@@ -19,13 +19,13 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/static/negrosrelicon.svg',
+            src: '/negrosrelicon.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/static/negrosrelicon.svg',
+            src: '/negrosrelicon.svg',
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
@@ -67,7 +67,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/static/',
+  // Remove base completely - it will be added during build
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
