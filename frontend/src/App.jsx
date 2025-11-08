@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { savePendingReport, getPendingReports, deletePendingReport } from './db'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route } from 'react-router-dom'
 import AdminDashboard from './components/AdminDashboard'
 import { Geolocation } from '@capacitor/geolocation'
 
@@ -643,12 +643,12 @@ function UserApp() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<UserApp />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 
