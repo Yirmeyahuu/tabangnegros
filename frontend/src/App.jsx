@@ -631,13 +631,6 @@ function UserApp() {
             </span>
           )}
         </button>
-
-        <div className={`mt-auto pt-6 text-center text-xs ${
-          darkMode ? 'text-slate-400' : 'text-slate-500'
-        } transition-colors duration-300`}>
-          <p>Your location will be shared with emergency responders.</p>
-          <p className="mt-1">For life-threatening emergencies, call 911 immediately.</p>
-        </div>
       </main>
 
       {/* Footer with Admin Link */}
