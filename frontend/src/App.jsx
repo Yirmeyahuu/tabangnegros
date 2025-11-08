@@ -3,6 +3,9 @@ import axios from 'axios'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import { savePendingReport, getPendingReports, deletePendingReport } from './db'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import AdminDashboard from './components/AdminDashboard'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -14,7 +17,7 @@ L.Icon.Default.mergeOptions({
 
 const API_URL = 'http://127.0.0.1:8000/api/reports'
 
-function App() {
+function UserApp() {
   const [location, setLocation] = useState(null)
   const [address, setAddress] = useState('')
   const [message, setMessage] = useState('')
@@ -26,6 +29,8 @@ function App() {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
   })
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [pendingCount, setPendingCount] = useState(0)
 
   // Preloader effect
   useEffect(() => {
@@ -44,6 +49,52 @@ function App() {
     }
     localStorage.setItem('darkMode', JSON.stringify(darkMode))
   }, [darkMode])
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  // Sync pending reports when online
+  useEffect(() => {
+    const syncPendingReports = async () => {
+      if (!isOnline) return
+      
+      try {
+        const pending = await getPendingReports()
+        setPendingCount(pending.length)
+        
+        for (const report of pending) {
+          try {
+            await axios.post(`${API_URL}/send/`, {
+              latitude: report.latitude,
+              longitude: report.longitude,
+              accuracy: report.accuracy,
+              message: report.message,
+              device_id: report.device_id
+            })
+            await deletePendingReport(report.id)
+            setPendingCount(prev => prev - 1)
+          } catch (err) {
+            console.error('Failed to sync report:', err)
+          }
+        }
+      } catch (err) {
+        console.error('Sync error:', err)
+      }
+    }
+    
+    syncPendingReports()
+  }, [isOnline])
 
   // Reverse geocoding function
   const getAddressFromCoords = async (lat, lng) => {
@@ -115,25 +166,48 @@ function App() {
     setLoading(true)
     setError('')
 
+    const deviceId = localStorage.getItem('device_id') || 
+                     `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    localStorage.setItem('device_id', deviceId)
+
+    const reportData = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      accuracy: location.accuracy,
+      message: message.trim(),
+      device_id: deviceId
+    }
+
     try {
-      const deviceId = localStorage.getItem('device_id') || 
-                       `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      localStorage.setItem('device_id', deviceId)
-
-      await axios.post(`${API_URL}/send/`, {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        accuracy: location.accuracy,
-        message: message.trim(),
-        device_id: deviceId
-      })
-
-      setSuccess(true)
-      setMessage('')
-      
-      setTimeout(() => setSuccess(false), 5000)
+      if (!isOnline) {
+        // Save offline
+        await savePendingReport(reportData)
+        setSuccess(true)
+        setMessage('')
+        setPendingCount(prev => prev + 1)
+        setTimeout(() => setSuccess(false), 5000)
+      } else {
+        // Send online
+        await axios.post(`${API_URL}/send/`, reportData)
+        setSuccess(true)
+        setMessage('')
+        setTimeout(() => setSuccess(false), 5000)
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send report. Please try again.')
+      // If online request fails, save offline
+      if (isOnline) {
+        try {
+          await savePendingReport(reportData)
+          setSuccess(true)
+          setMessage('')
+          setPendingCount(prev => prev + 1)
+          setTimeout(() => setSuccess(false), 5000)
+        } catch (offlineErr) {
+          setError('Failed to save report. Please try again.')
+        }
+      } else {
+        setError('Failed to send report. Please try again.')
+      }
       console.error('Error:', err)
     } finally {
       setLoading(false)
@@ -235,6 +309,14 @@ function App() {
         </div>
       </header>
 
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div className="bg-yellow-500 text-white text-xs py-2 px-4 text-center font-medium">
+          📡 Offline Mode - Reports will sync when online
+          {pendingCount > 0 && ` (${pendingCount} pending)`}
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 flex flex-col p-4 max-w-lg mx-auto w-full">
         {/* Location Status & Map */}
@@ -299,9 +381,13 @@ function App() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Help request sent!
+              {isOnline ? 'Help request sent!' : 'Help request saved offline!'}
             </p>
-            <p className="text-sm mt-1 opacity-90">Emergency responders have been notified.</p>
+            <p className="text-sm mt-1 opacity-90">
+              {isOnline 
+                ? 'Emergency responders have been notified.' 
+                : 'Will be sent when connection is restored.'}
+            </p>
           </div>
         )}
 
@@ -362,7 +448,7 @@ function App() {
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Sending...
+              {isOnline ? 'Sending...' : 'Saving...'}
             </span>
           ) : (
             <span className="flex items-center justify-center gap-2">
@@ -380,6 +466,18 @@ function App() {
         </div>
       </main>
     </div>
+  )
+}
+
+// Main App component with routing
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<UserApp />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 

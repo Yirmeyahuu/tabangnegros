@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tabang Negros</string>
+    <string name="title_activity_main">Tabang Negros</string>
+    <string name="package_name">com.tabangnegros.app</string>
+    <string name="custom_url_scheme">com.tabangnegros.app</string>
+</resources>
