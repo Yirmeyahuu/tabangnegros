@@ -54,7 +54,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost",
 ]
 
-# Allow all origins for mobile app (you can restrict this later)
 CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'tabangnegrosproj.urls'
@@ -62,11 +61,11 @@ ROOT_URLCONF = 'tabangnegrosproj.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'staticfiles')],  # Added to serve React app
+        'DIRS': [os.path.join(BASE_DIR, 'staticfiles')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',  # Added
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -79,7 +78,6 @@ WSGI_APPLICATION = 'tabangnegrosproj.wsgi.application'
 
 # Database Configuration
 if os.getenv("RENDER"):
-    # Use Render's PostgreSQL
     DATABASES = {
         'default': dj_database_url.config(
             default=os.getenv('DATABASE_URL'),
@@ -87,7 +85,6 @@ if os.getenv("RENDER"):
         )
     }
 else:
-    # Local PostgreSQL
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -115,17 +112,25 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Manila'  # Changed to Philippines timezone
+TIME_ZONE = 'Asia/Manila'
 USE_I18N = True
 USE_TZ = True
 
 # Static files configuration
-STATIC_URL = '/static/'
+STATIC_URL = '/'  # Changed from '/static/' to '/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# WhiteNoise configuration - use simpler storage for React build
+if os.getenv("RENDER"):
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'  # Changed
+else:
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# WhiteNoise settings
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = DEBUG
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
