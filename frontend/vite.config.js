@@ -67,7 +67,7 @@ export default defineConfig({
       }
     })
   ],
-  // Remove base completely - it will be added during build
+  // NO base path at all in config - will be added via CLI for web build only
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
