@@ -67,7 +67,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/static/',  // Add this back
+  base: '/static/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
