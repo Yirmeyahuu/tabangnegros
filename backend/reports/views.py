@@ -6,9 +6,6 @@ from rest_framework.throttling import AnonRateThrottle
 from .models import EmergencyReport
 from .serializers import EmergencyReportSerializer
 import math
-from django.http import HttpResponse
-import os
-from django.conf import settings
 
 # Custom throttle for emergency reports
 class EmergencyReportThrottle(AnonRateThrottle):
@@ -74,12 +71,3 @@ def update_report_status(request, report_id):
         return Response(serializer.data)
     except EmergencyReport.DoesNotExist:
         return Response({'error': 'Report not found'}, status=404)
-    
-
-def serve_react(request):
-    """Serve the React app's index.html"""
-    try:
-        with open(os.path.join(settings.BASE_DIR, 'staticfiles', 'index.html')) as f:
-            return HttpResponse(f.read())
-    except FileNotFoundError:
-        return HttpResponse("React app not found. Run 'npm run build' first.", status=404)
