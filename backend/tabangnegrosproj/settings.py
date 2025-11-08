@@ -3,6 +3,13 @@ import os
 from dotenv import load_dotenv
 import dj_database_url
 
+# Cloudinary Configuration (for image uploads)
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -123,6 +130,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Media files configuration (different from STATIC_URL)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Maximum upload size: 5MB per image
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB total (2 images)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880   # 5MB per image
+
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 # WhiteNoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'

@@ -9,6 +9,7 @@ import AdminDashboard from './components/AdminDashboard'
 import Login from './components/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 import { Geolocation } from '@capacitor/geolocation'
+import CameraCapture from './components/CameraCapture'
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -24,6 +25,7 @@ function UserApp() {
   const [location, setLocation] = useState(null)
   const [address, setAddress] = useState('')
   const [message, setMessage] = useState('')
+  const [photos, setPhotos] = useState([null, null])
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -36,6 +38,8 @@ function UserApp() {
   const [pendingCount, setPendingCount] = useState(0)
   const [locationPermission, setLocationPermission] = useState('prompt')
   const [requestingLocation, setRequestingLocation] = useState(false)
+
+  // ...existing code...
 
   // Preloader effect
   useEffect(() => {
@@ -80,12 +84,25 @@ function UserApp() {
         
         for (const report of pending) {
           try {
-            await axios.post(`${API_URL}/send/`, {
-              latitude: report.latitude,
-              longitude: report.longitude,
-              accuracy: report.accuracy,
-              message: report.message,
-              device_id: report.device_id
+            const formData = new FormData()
+            formData.append('latitude', report.latitude)
+            formData.append('longitude', report.longitude)
+            formData.append('accuracy', report.accuracy)
+            formData.append('message', report.message)
+            formData.append('device_id', report.device_id)
+            
+            // Add photos if they exist
+            if (report.photo1) {
+              const photo1Blob = await fetch(report.photo1).then(r => r.blob())
+              formData.append('photo1', photo1Blob, 'photo1.jpg')
+            }
+            if (report.photo2) {
+              const photo2Blob = await fetch(report.photo2).then(r => r.blob())
+              formData.append('photo2', photo2Blob, 'photo2.jpg')
+            }
+            
+            await axios.post(`${API_URL}/send/`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
             })
             await deletePendingReport(report.id)
             setPendingCount(prev => prev - 1)
@@ -256,6 +273,26 @@ function UserApp() {
     checkInitialPermission()
   }, [])
 
+  // Handle photo capture from CameraCapture component
+  const handlePhotosCapture = (capturedPhotos) => {
+    setPhotos(capturedPhotos)
+  }
+
+  // Convert base64 to blob
+  const base64ToBlob = (base64Data) => {
+    const parts = base64Data.split(';base64,')
+    const contentType = parts[0].split(':')[1]
+    const raw = window.atob(parts[1])
+    const rawLength = raw.length
+    const uInt8Array = new Uint8Array(rawLength)
+
+    for (let i = 0; i < rawLength; ++i) {
+      uInt8Array[i] = raw.charCodeAt(i)
+    }
+
+    return new Blob([uInt8Array], { type: contentType })
+  }
+
   const sendEmergencyReport = async () => {
     if (!location) {
       setError('Location not available. Please enable location services.')
@@ -267,6 +304,12 @@ function UserApp() {
       return
     }
 
+    // Check if both photos are captured
+    if (!photos[0] || !photos[1]) {
+      setError('Please take both photos before submitting.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -274,33 +317,67 @@ function UserApp() {
                      `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     localStorage.setItem('device_id', deviceId)
 
-    const reportData = {
-      latitude: location.latitude,
-      longitude: location.longitude,
-      accuracy: location.accuracy,
-      message: message.trim(),
-      device_id: deviceId
-    }
-
     try {
+      // Create FormData for multipart upload
+      const formData = new FormData()
+      formData.append('latitude', location.latitude)
+      formData.append('longitude', location.longitude)
+      formData.append('accuracy', location.accuracy)
+      formData.append('message', message.trim())
+      formData.append('device_id', deviceId)
+
+      // Convert base64 photos to blobs and append
+      const photo1Blob = base64ToBlob(photos[0])
+      const photo2Blob = base64ToBlob(photos[1])
+      
+      formData.append('photo1', photo1Blob, 'photo1.jpg')
+      formData.append('photo2', photo2Blob, 'photo2.jpg')
+
       if (!isOnline) {
+        // Save to IndexedDB for offline sync
+        const reportData = {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracy: location.accuracy,
+          message: message.trim(),
+          device_id: deviceId,
+          photo1: photos[0],
+          photo2: photos[1]
+        }
         await savePendingReport(reportData)
         setSuccess(true)
         setMessage('')
+        setPhotos([null, null])
         setPendingCount(prev => prev + 1)
         setTimeout(() => setSuccess(false), 5000)
       } else {
-        await axios.post(`${API_URL}/send/`, reportData)
+        await axios.post(`${API_URL}/send/`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
         setSuccess(true)
         setMessage('')
+        setPhotos([null, null])
         setTimeout(() => setSuccess(false), 5000)
       }
     } catch (err) {
       if (isOnline) {
         try {
+          // Try saving offline as fallback
+          const reportData = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+            message: message.trim(),
+            device_id: deviceId,
+            photo1: photos[0],
+            photo2: photos[1]
+          }
           await savePendingReport(reportData)
           setSuccess(true)
           setMessage('')
+          setPhotos([null, null])
           setPendingCount(prev => prev + 1)
           setTimeout(() => setSuccess(false), 5000)
         } catch (offlineErr) {
@@ -315,7 +392,7 @@ function UserApp() {
     }
   }
 
-  // Preloader (same as before)
+  // Preloader
   if (isPreloading) {
     return (
       <div className={`min-h-screen flex flex-col items-center justify-center transition-all duration-500 ${
@@ -579,6 +656,12 @@ function UserApp() {
           </div>
         )}
 
+        {/* Camera Capture Component */}
+        <CameraCapture 
+          darkMode={darkMode}
+          onPhotosCapture={handlePhotosCapture}
+        />
+
         <div className={`${
           darkMode 
             ? 'bg-slate-800/50 backdrop-blur-sm border border-slate-700' 
@@ -611,9 +694,9 @@ function UserApp() {
 
         <button
           onClick={sendEmergencyReport}
-          disabled={loading || !location}
+          disabled={loading || !location || !photos[0] || !photos[1]}
           className={`w-full py-4 px-6 rounded-xl font-bold text-lg shadow-xl transition-all duration-300 ${
-            loading || !location
+            loading || !location || !photos[0] || !photos[1]
               ? 'bg-gray-400 cursor-not-allowed text-white'
               : darkMode
               ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white active:scale-95 shadow-blue-500/50'

@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from .models import EmergencyReport
@@ -9,16 +10,63 @@ import math
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from rest_framework import status
+from PIL import Image
 
 # Custom throttle for emergency reports
 class EmergencyReportThrottle(AnonRateThrottle):
     rate = '10/hour'  # 10 reports per hour per IP
 
-# Create new distress report
+# Create new distress report with image upload validation (UPDATED)
 class EmergencyReportCreateView(generics.CreateAPIView):
     queryset = EmergencyReport.objects.all()
     serializer_class = EmergencyReportSerializer
     throttle_classes = [EmergencyReportThrottle]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def create(self, request, *args, **kwargs):
+        # Validate images
+        photo1 = request.FILES.get('photo1')
+        photo2 = request.FILES.get('photo2')
+        
+        # Check if both photos are provided
+        if not photo1 or not photo2:
+            return Response(
+                {'error': 'Both photo1 and photo2 are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file size (5MB max)
+        max_size = 5 * 1024 * 1024  # 5MB
+        if photo1.size > max_size:
+            return Response(
+                {'error': 'Photo 1 exceeds 5MB limit'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if photo2.size > max_size:
+            return Response(
+                {'error': 'Photo 2 exceeds 5MB limit'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate file format
+        allowed_formats = ['JPEG', 'PNG']
+        try:
+            img1 = Image.open(photo1)
+            img2 = Image.open(photo2)
+            
+            if img1.format not in allowed_formats or img2.format not in allowed_formats:
+                return Response(
+                    {'error': 'Only JPG, JPEG, and PNG formats are allowed'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception:
+            return Response(
+                {'error': 'Invalid image files'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Proceed with normal creation
+        return super().create(request, *args, **kwargs)
 
 # Retrieve all reports (for dashboard)
 class EmergencyReportListView(generics.ListAPIView):
@@ -37,7 +85,7 @@ def get_active_reports(request):
     active_reports = EmergencyReport.objects.filter(
         status__in=['pending', 'acknowledged', 'responding']
     )
-    serializer = EmergencyReportSerializer(active_reports, many=True)
+    serializer = EmergencyReportSerializer(active_reports, many=True, context={'request': request})
     return Response(serializer.data)
 
 # Get reports by area
@@ -59,7 +107,7 @@ def get_reports_by_area(request):
         status__in=['pending', 'acknowledged', 'responding']
     )
     
-    serializer = EmergencyReportSerializer(reports, many=True)
+    serializer = EmergencyReportSerializer(reports, many=True, context={'request': request})
     return Response(serializer.data)
 
 # Update report status
@@ -70,11 +118,10 @@ def update_report_status(request, report_id):
         report = EmergencyReport.objects.get(id=report_id)
         report.status = request.data.get('status', report.status)
         report.save()
-        serializer = EmergencyReportSerializer(report)
+        serializer = EmergencyReportSerializer(report, context={'request': request})
         return Response(serializer.data)
     except EmergencyReport.DoesNotExist:
         return Response({'error': 'Report not found'}, status=404)
-    
 
 @api_view(['POST'])
 def admin_login(request):

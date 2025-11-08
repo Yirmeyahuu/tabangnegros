@@ -19,6 +19,7 @@ function AdminDashboard() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [selectedReport, setSelectedReport] = useState(null)
   const navigate = useNavigate()
   const adminUsername = localStorage.getItem('admin_username')
 
@@ -184,6 +185,37 @@ function AdminDashboard() {
                 </div>
                 
                 <p className="text-sm mb-3">{report.message}</p>
+
+                {/* Photo Preview Section */}
+                {(report.photo1_url || report.photo2_url) && (
+                  <div className="mb-3">
+                    <p className="text-xs text-slate-400 mb-2">📸 Evidence Photos:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {report.photo1_url && (
+                        <img
+                          src={report.photo1_url}
+                          alt="Photo 1"
+                          className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setSelectedReport(report)}
+                        />
+                      )}
+                      {report.photo2_url && (
+                        <img
+                          src={report.photo2_url}
+                          alt="Photo 2"
+                          className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setSelectedReport(report)}
+                        />
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setSelectedReport(report)}
+                      className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+                    >
+                      View full size →
+                    </button>
+                  </div>
+                )}
                 
                 <div className="text-xs text-slate-400 mb-3">
                   <p>📍 {report.latitude.toFixed(6)}, {report.longitude.toFixed(6)}</p>
@@ -235,6 +267,125 @@ function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Photo Modal */}
+      {selectedReport && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedReport(null)}
+        >
+          <div
+            className="bg-slate-800 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-2xl font-bold">Emergency #{selectedReport.id}</h3>
+                <p className="text-sm text-slate-400">{getTimeAgo(selectedReport.created_at)}</p>
+              </div>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="text-slate-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-slate-300">{selectedReport.message}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {selectedReport.photo1_url && (
+                <div>
+                  <p className="text-sm text-slate-400 mb-2">Photo 1:</p>
+                  <img
+                    src={selectedReport.photo1_url}
+                    alt="Photo 1"
+                    className="w-full rounded-lg"
+                  />
+                  <a
+                    href={selectedReport.photo1_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                  >
+                    Open in new tab →
+                  </a>
+                </div>
+              )}
+              {selectedReport.photo2_url && (
+                <div>
+                  <p className="text-sm text-slate-400 mb-2">Photo 2:</p>
+                  <img
+                    src={selectedReport.photo2_url}
+                    alt="Photo 2"
+                    className="w-full rounded-lg"
+                  />
+                  <a
+                    href={selectedReport.photo2_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                  >
+                    Open in new tab →
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="text-sm text-slate-400 border-t border-slate-700 pt-4">
+              <p>📍 Coordinates: {selectedReport.latitude.toFixed(6)}, {selectedReport.longitude.toFixed(6)}</p>
+              <p>🎯 Accuracy: ±{Math.round(selectedReport.accuracy)}m</p>
+              <p>📅 Reported: {new Date(selectedReport.created_at).toLocaleString()}</p>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              {selectedReport.status === 'pending' && (
+                <button
+                  onClick={() => {
+                    updateStatus(selectedReport.id, 'acknowledged')
+                    setSelectedReport(null)
+                  }}
+                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded"
+                >
+                  Acknowledge
+                </button>
+              )}
+              {selectedReport.status === 'acknowledged' && (
+                <button
+                  onClick={() => {
+                    updateStatus(selectedReport.id, 'responding')
+                    setSelectedReport(null)
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                >
+                  Responding
+                </button>
+              )}
+              {(selectedReport.status === 'responding' || selectedReport.status === 'acknowledged') && (
+                <button
+                  onClick={() => {
+                    updateStatus(selectedReport.id, 'resolved')
+                    setSelectedReport(null)
+                  }}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+                >
+                  Resolve
+                </button>
+              )}
+              <a
+                href={`https://www.google.com/maps?q=${selectedReport.latitude},${selectedReport.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded"
+              >
+                📍 Navigate
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
