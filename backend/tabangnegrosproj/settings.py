@@ -117,18 +117,20 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files configuration
-STATIC_URL = '/'  # Changed from '/static/' to '/'
+STATIC_URL = '/static/'  # Changed back to /static/
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# WhiteNoise configuration - use simpler storage for React build
-if os.getenv("RENDER"):
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'  # Changed
-else:
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+# Media files configuration (different from STATIC_URL)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# WhiteNoise settings
+# WhiteNoise configuration
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = DEBUG
+
+# Add staticfiles as root for serving (allows serving from root path)
+WHITENOISE_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
