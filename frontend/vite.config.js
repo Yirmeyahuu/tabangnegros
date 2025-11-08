@@ -19,13 +19,13 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/negrosrelicon.svg',
+            src: '/static/negrosrelicon.svg',  // Updated with /static/ prefix
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/negrosrelicon.svg',
+            src: '/static/negrosrelicon.svg',  // Updated with /static/ prefix
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
@@ -67,6 +67,12 @@ export default defineConfig({
       }
     })
   ],
+  base: '/static/',  // Added - tells Vite to use /static/ as base path
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true
+  },
   server: {
     host: true,
     port: 5173,
