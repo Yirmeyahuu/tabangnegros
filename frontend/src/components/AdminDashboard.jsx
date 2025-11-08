@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
+import { useNavigate } from 'react-router-dom'
 
 const API_URL = 'https://tabangnegros.onrender.com/api/reports'
 
@@ -18,6 +19,8 @@ function AdminDashboard() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const navigate = useNavigate()
+  const adminUsername = localStorage.getItem('admin_username')
 
   const fetchReports = async () => {
     try {
@@ -79,6 +82,12 @@ function AdminDashboard() {
     )
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_username')
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
@@ -91,6 +100,9 @@ function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-400">
+              👤 {adminUsername}
+            </span>
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -105,6 +117,12 @@ function AdminDashboard() {
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
             >
               🔄 Refresh
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg"
+            >
+              Logout
             </button>
           </div>
         </div>

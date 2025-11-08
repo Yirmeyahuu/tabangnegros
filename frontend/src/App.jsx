@@ -4,8 +4,10 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { savePendingReport, getPendingReports, deletePendingReport } from './db'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
 import AdminDashboard from './components/AdminDashboard'
+import Login from './components/Login'
+import ProtectedRoute from './components/ProtectedRoute'
 import { Geolocation } from '@capacitor/geolocation'
 
 // Fix for default marker icon
@@ -637,16 +639,46 @@ function UserApp() {
           <p className="mt-1">For life-threatening emergencies, call 911 immediately.</p>
         </div>
       </main>
+
+      {/* Footer with Admin Link */}
+      <footer className={`mt-auto pt-6 pb-4 text-center text-xs ${
+        darkMode ? 'text-slate-400' : 'text-slate-500'
+      } transition-colors duration-300`}>
+        <p>Your location will be shared with emergency responders.</p>
+        <p className="mt-1">For life-threatening emergencies, call 911 immediately.</p>
+        
+        {/* Admin Link */}
+        <div className="mt-4">
+          <Link 
+            to="/login" 
+            className={`inline-block px-4 py-2 rounded-full text-xs transition-colors ${
+              darkMode
+                ? 'bg-slate-800/50 hover:bg-slate-700 text-slate-300'
+                : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+            }`}
+          >
+            🔐 Admin Access
+          </Link>
+        </div>
+      </footer>
     </div>
   )
 }
 
 function App() {
   return (
-    <BrowserRouter>  {/* ← Changed back from HashRouter */}
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<UserApp />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/login" element={<Login />} />
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </BrowserRouter>
   )
