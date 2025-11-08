@@ -17,7 +17,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 if os.getenv("RENDER"):
-    ALLOWED_HOSTS = ["tabangnegros.onrender.com", "*.onrender.com"]
+    ALLOWED_HOSTS = ["tabangnegros.onrender.com", "*.onrender.com", "localhost", "127.0.0.1"]
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 

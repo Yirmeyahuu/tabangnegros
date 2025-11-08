@@ -15,7 +15,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
-const API_URL = 'http://127.0.0.1:8000/api/reports'
+const API_URL = 'https://tabangnegros.onrender.com/api/reports'
 
 function UserApp() {
   const [location, setLocation] = useState(null)

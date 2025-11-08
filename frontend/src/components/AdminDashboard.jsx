@@ -3,7 +3,7 @@ import axios from 'axios'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 
-const API_URL = 'http://127.0.0.1:8000/api/reports'
+const API_URL = 'https://tabangnegros.onrender.com/api/reports'
 
 // Custom icon for emergency markers
 const emergencyIcon = new L.Icon({
