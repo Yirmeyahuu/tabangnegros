@@ -19,13 +19,13 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/negrosrelicon.svg',  // Remove /static/ prefix
+            src: '/negrosrelicon.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/negrosrelicon.svg',  // Remove /static/ prefix
+            src: '/negrosrelicon.svg',
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'
@@ -67,7 +67,7 @@ export default defineConfig({
       }
     })
   ],
-  // Remove base: '/static/' line
+  // Remove base: '/static/' completely
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

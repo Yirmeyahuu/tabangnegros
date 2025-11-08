@@ -5,7 +5,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .views import serve_react
 
-# Health check view
 def health_check(request):
     return JsonResponse({"status": "ok", "service": "Tabang Negros API"})
 
@@ -16,10 +15,9 @@ urlpatterns = [
 ]
 
 # Serve static files
-if not settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-# Catch all - serve React app (must be last)
+# Catch all EXCEPT static files - serve React app
 urlpatterns += [
-    re_path(r'^.*$', serve_react, name='react-app'),
+    re_path(r'^(?!assets/|static/|.*\.(js|css|svg|png|jpg|webp|woff|woff2|ico|json)).*$', serve_react, name='react-app'),
 ]
